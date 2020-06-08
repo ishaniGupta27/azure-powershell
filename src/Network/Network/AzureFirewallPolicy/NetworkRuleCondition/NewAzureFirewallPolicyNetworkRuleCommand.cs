@@ -56,6 +56,12 @@ namespace Microsoft.Azure.Commands.Network
 
         [Parameter(
             Mandatory = true,
+            HelpMessage = "The destination fqdns of the rule")]
+        [ValidateNotNullOrEmpty]
+        public string[] DestinationFqdns { get; set; }
+
+        [Parameter(
+            Mandatory = true,
             HelpMessage = "The protocols of the rule")]
         [ValidateSet(
             MNM.AzureFirewallNetworkRuleProtocol.Any,
@@ -76,6 +82,7 @@ namespace Microsoft.Azure.Commands.Network
                 SourceAddresses = this.SourceAddress?.ToList(),
                 DestinationAddresses = this.DestinationAddress?.ToList(),
                 DestinationPorts = this.DestinationPort?.ToList(),
+                DestinationFqdns = this.DestinationFqdns?.ToList(),
                 RuleType = "NetworkRule"
             };
             WriteObject(networkRule);

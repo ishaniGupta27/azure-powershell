@@ -237,3 +237,102 @@ function Test-AzureFirewallPolicyCRUD {
         Clean-ResourceGroup $rgname
     }
 }
+
+<#
+.SYNOPSIS
+Tests AzureFirewallPolicyWithDNSSettings.
+#>
+function Test-AzureFirewallPolicyWithDNSSettings {
+    # Setup
+    $rgname = "isgutestNfvrpRelease209"  #Get-ResourceGroupName %%%%%%TODO%%%%%
+    $azureFirewallPolicyName = Get-ResourceName
+    $azureFirewallPolicyAsJobName = Get-ResourceName
+    $resourceTypeParent = "Microsoft.Network/FirewallPolicies"
+    $location = "eastus2euap"
+    $dnsServers = @("10.10.10.1", "20.20.20.2")
+
+    try {
+        # Create the resource group
+        $resourceGroup = New-AzResourceGroup -Name $rgname -Location $location -Tags @{ testtag = "testval" }
+        
+        # Create AzureFirewallPolicy with No DNS Settings
+        $azureFirewallPolicy = New-AzFirewallPolicy -Name $azureFirewallPolicyName -ResourceGroupName $rgname -Location $location
+
+        # Get AzureFirewallPolicy
+        $getAzureFirewallPolicy = Get-AzFirewallPolicy -Name $azureFirewallPolicyName -ResourceGroupName $rgname
+
+        #verification
+        Assert-AreEqual $rgName $getAzureFirewallPolicy.ResourceGroupName
+        Assert-AreEqual $azureFirewallPolicyName $getAzureFirewallPolicy.Name
+        Assert-NotNull $getAzureFirewallPolicy.Location
+        Assert-AreEqual (Normalize-Location $location) $getAzureFirewallPolicy.Location
+        
+         # Check DNS Proxy
+        Assert-Null $getAzureFirewallPolicy.DnsSettings.EnableProxy
+        Assert-Null $getAzureFirewallPolicy.DnsSettings.Servers
+        Assert-Null $getAzureFirewallPolicy.DnsSettings.RequireProxyForNetworkRules
+
+        # Update AzureFirewallPolicy with Enable Proxy and DNS Servers
+
+        $dnsSettings = New-AzFirewallPolicyDnsSettings -EnableProxy -Server $dnsServers
+
+        $azureFirewallPolicy = New-AzFirewallPolicy -Name $azureFirewallPolicyName -ResourceGroupName $rgname -Location $location -DnsSettings $dnsSettings
+
+        # Get AzureFirewallPolicy
+        $getAzureFirewallPolicy = Get-AzFirewallPolicy -Name $azureFirewallPolicyName -ResourceGroupName $rgname
+
+        #verification
+        Assert-AreEqual $rgName $getAzureFirewallPolicy.ResourceGroupName
+        Assert-AreEqual $azureFirewallPolicyName $getAzureFirewallPolicy.Name
+        Assert-NotNull $getAzureFirewallPolicy.Location
+        Assert-AreEqual (Normalize-Location $location) $getAzureFirewallPolicy.Location
+        
+         # Check DNS Proxy
+        Assert-AreEqual true $getAzureFirewallPolicy.DnsSettings.EnableProxy
+        Assert-AreEqualArray $dnsServers $getAzureFirewallPolicy.DnsSettings.Servers
+        Assert-Null $getAzureFirewallPolicy.DnsSettings.RequireProxyForNetworkRules
+
+        # Update AzureFirewallPolicy with Enable Proxy , DNS Servers and Dns ProxyNotRequiredForNetworkRule
+        $dnsSettings = New-AzFirewallPolicyDnsSettings -EnableProxy -Server $dnsServers -ProxyNotRequiredForNetworkRule
+
+        $azureFirewallPolicy = New-AzFirewallPolicy -Name $azureFirewallPolicyName -ResourceGroupName $rgname -Location $location -DnsSettings $dnsSettings
+
+        # Get AzureFirewallPolicy
+        $getAzureFirewallPolicy = Get-AzFirewallPolicy -Name $azureFirewallPolicyName -ResourceGroupName $rgname
+
+        #verification
+        Assert-AreEqual $rgName $getAzureFirewallPolicy.ResourceGroupName
+        Assert-AreEqual $azureFirewallPolicyName $getAzureFirewallPolicy.Name
+        Assert-NotNull $getAzureFirewallPolicy.Location
+        Assert-AreEqual (Normalize-Location $location) $getAzureFirewallPolicy.Location
+        
+         # Check DNS Proxy
+        Assert-AreEqual true $getAzureFirewallPolicy.DnsSettings.EnableProxy
+        Assert-AreEqualArray $dnsServers $getAzureFirewallPolicy.DnsSettings.Servers
+        Assert-AreEqual false $getAzureFirewallPolicy.DnsSettings.RequireProxyForNetworkRules
+
+        # Set AzureFirewallPolicy
+        Set-AzFirewallPolicy -InputObject $azureFirewallPolicy
+        # Get AzureFirewallPolicy
+        $getAzureFirewallPolicy = Get-AzFirewallPolicy -Name $azureFirewallPolicyName -ResourceGroupName $rgName
+
+        # #verification
+        Assert-AreEqual $rgName $getAzureFirewallPolicy.ResourceGroupName
+        Assert-AreEqual $azureFirewallPolicyName $getAzureFirewallPolicy.Name
+        Assert-NotNull $getAzureFirewallPolicy.Location
+        Assert-AreEqual $location $getAzureFirewallPolicy.Location
+
+         # Check DNS Proxy
+        Assert-AreEqual true $getAzureFirewallPolicy.DnsSettings.EnableProxy
+        Assert-AreEqualArray $dnsServers $getAzureFirewallPolicy.DnsSettings.Servers
+        Assert-AreEqual false $getAzureFirewallPolicy.DnsSettings.RequireProxyForNetworkRules
+
+        $azureFirewallPolicyAsJob = New-AzFirewallPolicy -Name $azureFirewallPolicyAsJobName -ResourceGroupName $rgname -Location $location -DnsSettings $dnsSettings -AsJob
+        $result = $azureFirewallPolicyAsJob | Wait-Job
+        Assert-AreEqual "Completed" $result.State;
+    }
+    finally {
+        # Cleanup
+        Clean-ResourceGroup $rgname
+    }
+}
